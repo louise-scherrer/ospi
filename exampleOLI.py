@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 
+import eigenpy
+eigenpy.switchToNumpyArray()
+
 import subprocess
 import time
+import sys
+sys.path.append('/home/lscherrer/workspace/install/lib/python3.6/site-packages/ospi')
 
 import ospi.motion_parser as mtp
 import ospi.viewer_utils as vw

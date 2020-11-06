@@ -99,7 +99,7 @@ class Viewer(object):
         layout. If multiple objects have to be placed at the same time, do the refresh only
         at the end of the list
         '''
-        pinocchioConf = se3.utils.se3ToXYZQUAT(M)
+        pinocchioConf = se3.SE3ToXYZQUATtuple(M) # API change
         self.viewer.gui.applyConfiguration(objName, pinocchioConf)
         if refresh:
             self.viewer.gui.refresh()
@@ -126,7 +126,7 @@ class Viewer(object):
                 # convert bones pose
                 pose.translation = (
                     robot.data.oMi[idx].translation +
-                    np.matrix(np.array([0., 0., 0.]) * np.array(np.squeeze(robot.visuals[i][4][3:6]))[0]).T)
+                    np.array([0., 0., 0.] * np.array(np.squeeze(robot.visuals[i][4][3:6]))).T) # API change CAREFUL I don't understand what this is doing now, seems always zero
                 # *self.visuals[i][4][3:6])
                 pose.rotation = robot.data.oMi[idx].rotation * oMp
 
