@@ -15,6 +15,11 @@ class MS:
         self.name = name
         # self.FrameType = se3.FrameType.OP_FRAME
 
+        # WIP on compatibility with RobotWrapper
+        self.geom_model = se3.GeometryModel()
+        print("just created geom model")
+
+
     def buildModel(self, parent, joint_model, joint_placement, joint_name, joint_id, body_inertia, body_placement,
                    body_name):
         ''' Add a model to the kinematic three

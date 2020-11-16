@@ -16,6 +16,7 @@ class Wrapper():
         self.data = ms_system.data
         self.visuals = ms_system.visuals
         self.forces = ms_system.forces
+        self.geom_model = ms_system.geom_model
         self.joint_transformations = ms_system.joint_transformations
         self.v0 = zero(self.model.nv)  # TODO get from model
         self.q0 = zero(self.model.nq)  # TODO get from model

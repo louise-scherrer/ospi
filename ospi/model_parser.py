@@ -161,7 +161,9 @@ def readOsim(filename):
 def parseModel(filename, mesh_path, verbose=False):
     pymodel = readOsim(filename)
     ms_system = builder.MS("MS system")  # TODO get model name
-    osMpi = se3.utils.rotate('z', np.pi / 2) * se3.utils.rotate('x', np.pi / 2)
+    #osMpi = se3.utils.rotate('z', np.pi / 2) * se3.utils.rotate('x', np.pi / 2) # isn't correct anymore with array standard
+    osMpi = np.dot(se3.utils.rotate('z', np.pi / 2), se3.utils.rotate('x', np.pi / 2)) # test
+    #osMpi = se3.SE3.Identity().rotation
 
     joint_models, joint_transformations = utils._parse2PinocchioJoints(pymodel)
     ms_system.createJointTransformations(joint_transformations)
@@ -192,11 +194,16 @@ def parseModel(filename, mesh_path, verbose=False):
         # From OpenSim to Pinocchio
         joint_placement = se3.SE3.Identity()
         r = np.matrix(pymodel['Joints'][joint][0]['orientation_in_parent'][0], dtype=np.float64).T
+        print("r", r, "de type", type(r))
+        rbis = np.asarray(np.matrix(pymodel['Joints'][joint][0]['orientation_in_parent'][0], dtype=np.float64).T) # is there a cleaner way?
+        print("rbis", rbis, "de type", type(rbis)) # rbis doen't work because of rpyToMatrix()
         # TODO change orientation of joint ***
         joint_placement.rotation = se3.utils.rpyToMatrix(osMpi * r)
+        print("osmpi * r", osMpi * r)
 
         t = pymodel['Joints'][joint][0]['location_in_parent'][0]
         joint_placement.translation = osMpi * np.matrix(t, dtype=np.float64).T
+        print("joint", joint, "is here", joint_placement)
 
         mass = np.float64(pymodel['Bodies'][body]['mass'][0])
         mass_center = osMpi * np.matrix(pymodel['Bodies'][body]['mass_center'][0], dtype=np.float64).T
@@ -209,8 +216,13 @@ def parseModel(filename, mesh_path, verbose=False):
                              body_name)
 
         scale_factors = osMpi * (np.matrix(pymodel['Visuals'][body][0]['scale_factors'][0], np.float64)).T
-        scale_factors = np.asarray(scale_factors.T)[0]
-        scale_factors = [scale_factors[0], scale_factors[1], scale_factors[2]]
+        print(scale_factors)
+        #scale_factors = np.asarray(scale_factors.T)[0]
+        #print(scale_factors)
+        #scale_factors = [scale_factors[0], scale_factors[1], scale_factors[2]]
+        #print(scale_factors)
+        #scale_factors = np.array([scale_factors[0], scale_factors[1], scale_factors[2]])
+        #print(scale_factors)
 
         # add to visuals list
         for mesh in range(0, len(pymodel['Visuals'][body][1]['geometry_file'])):
@@ -219,9 +231,38 @@ def parseModel(filename, mesh_path, verbose=False):
             if (verbose):
                 print('Filename: ' + filename)
             transform = np.matrix(pymodel['Visuals'][body][1]['transform'][mesh], dtype=np.float64).T
-            transform[3:6] = osMpi * transform[3:6]
+            #print(transform[3:6])
+            transform[3:6] = osMpi * transform[3:6] # issue ehre with matrix sizes
+            #print("transform 3:6", transform[3:6])
             transform[0:3] = osMpi * transform[0:3]
             ms_system.createVisuals(parent, joint_name, filename, scale_factors, transform)
+
+            # WIP for compatibility with RobotWrapper, filling ms_system.geom_model attribute
+            scale_factorsEigen = np.array([1., 1., 1.])
+            transformSE3 = se3.SE3.Identity()
+            transformSE3.rotation = np.dot(se3.utils.rpyToMatrix(transform[0:3]), osMpi) # according to line 131 of viewer_utils.py
+            print("transformSE3 is", transformSE3)
+            transformSE3.translation = transform[3:6]
+            #print("fourni", transformSE3.translation)
+            parent_joint = joint + 1 # the first bones are attached to the free-flyer (ground_pelvis joint), not the universe
+            geom_obj = se3.GeometryObject(visual_name, parent_joint, None, transformSE3, filename, scale_factors) # doc: including its parent joint, 
+            #parent frame, placement in parent joint's frame.
+            #"name","parent_joint","collision_geometry",
+            #"placement", "mesh_path", "mesh_scale", "override_material", "mesh_color", "mesh_texture_path"),
+            #  "Reduced constructor of a GeometryObject. This constructor does not require to specify the parent frame index."
+
+            ##############################
+            #### IMPORTANT isn't placement the 'location_in_parent' of the opensim file + transform maybe? also 'orietation_in_parent'
+            ##############################
+
+
+            #"name","parent_frame","parent_joint","collision_geometry",
+            #"placement", "mesh_path", "mesh_scale", "override_material", "mesh_color", "mesh_texture_path"
+            ms_system.geom_model.addGeometryObject(geom_obj)
+            # thoughts: how are positioned the different meshes that compose the hip for example? is it predefined
+            # in the obj mesh so they end up in correct position wrt one another when displayed at the position
+            # of the hip frame? 
+
         if (verbose):
             print('****')
 
