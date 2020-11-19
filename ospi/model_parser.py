@@ -235,6 +235,7 @@ def parseModel(filename, mesh_path, verbose=False):
             transform[3:6] = osMpi * transform[3:6] # issue ehre with matrix sizes
             #print("transform 3:6", transform[3:6])
             transform[0:3] = osMpi * transform[0:3]
+            print(transform)
             ms_system.createVisuals(parent, joint_name, filename, scale_factors, transform)
 
             # WIP for compatibility with RobotWrapper, filling ms_system.geom_model attribute
@@ -242,17 +243,18 @@ def parseModel(filename, mesh_path, verbose=False):
             transformSE3 = se3.SE3.Identity()
             transformSE3.rotation = np.dot(se3.utils.rpyToMatrix(transform[0:3]), osMpi) # according to line 131 of viewer_utils.py
             print("transformSE3 is", transformSE3)
-            transformSE3.translation = transform[3:6]
+            #transformSE3.translation = transform[3:6] # test , solves translation of fingers and skull, rotation still faulty
             #print("fourni", transformSE3.translation)
             parent_joint = joint + 1 # the first bones are attached to the free-flyer (ground_pelvis joint), not the universe
-            geom_obj = se3.GeometryObject(visual_name, parent_joint, None, transformSE3, filename, scale_factors) # doc: including its parent joint, 
+            parent_frame = ms_system.model.getFrameId(joint_name)# on Joseph's recommendations TO CHECK
+            geom_obj = se3.GeometryObject(visual_name, parent_frame, parent_joint, None, transformSE3, filename, scale_factors) # doc: including its parent joint, 
             #parent frame, placement in parent joint's frame.
             #"name","parent_joint","collision_geometry",
             #"placement", "mesh_path", "mesh_scale", "override_material", "mesh_color", "mesh_texture_path"),
             #  "Reduced constructor of a GeometryObject. This constructor does not require to specify the parent frame index."
 
             ##############################
-            #### IMPORTANT isn't placement the 'location_in_parent' of the opensim file + transform maybe? also 'orietation_in_parent'
+
             ##############################
 
 
