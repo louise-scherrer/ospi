@@ -38,11 +38,11 @@ r.loadViewerModel("skeleton")
 r.display(wb_model.q0)
 time.sleep(10)
 # Add the floor and scale it
-"""r.viewer.gui.addFloor('hpp-gui/floor')
+r.viewer.gui.addFloor('hpp-gui/floor')
 r.viewer.gui.setScale('hpp-gui/floor', [0.5, 0.5, 0.5])
 r.viewer.gui.setColor('hpp-gui/floor', [0.7, 0.7, 0.7, 1.])
 r.viewer.gui.setLightingMode('hpp-gui/floor', 'OFF')
-"""
+
 # See axis
 #r.viewer.JointFrames(wb_model.name)
 

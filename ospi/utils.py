@@ -64,7 +64,7 @@ def _parse2PinocchioJoints(pymodel):
 
 def pinocchioCoordinates(model, joint_transformations, dof, representation="quat"):
     jt = joint_transformations
-    oMp = se3.utils.rotate('z', np.pi / 2) * se3.utils.rotate('x', np.pi / 2)
+    oMp = np.dot(se3.utils.rotate('z', np.pi / 2), se3.utils.rotate('x', np.pi / 2)) # API change
     q = np.matrix(np.zeros((model.nq, 1)))
     qo_idx = 0  # osim index
     qp_idx = 0  # pinocchio index
