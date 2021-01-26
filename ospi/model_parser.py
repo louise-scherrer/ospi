@@ -182,7 +182,7 @@ def parseModel(filename, mesh_path, verbose=False):
         joint_id = body
         parent = idx.index(pymodel['Joints'][joint][0]['parent_body'][0])
         joint_model = joint_models[joint][2]
-        jointLimits += pymodel['Joints'][joint][1]['range']
+        jointLimits += pymodel['Joints'][joint][1]['range'] # joint limits gathered here but not included in Pinocchio model then, ACTUALLY YES
 
         if (verbose):
             print('ID: ', joint_id)
@@ -194,21 +194,33 @@ def parseModel(filename, mesh_path, verbose=False):
         # From OpenSim to Pinocchio
         joint_placement = se3.SE3.Identity()
         r = np.matrix(pymodel['Joints'][joint][0]['orientation_in_parent'][0], dtype=np.float64).T
-        print("r", r, "de type", type(r))
+        #print("r", r, "de type", type(r))
         rbis = np.asarray(np.matrix(pymodel['Joints'][joint][0]['orientation_in_parent'][0], dtype=np.float64).T) # is there a cleaner way?
-        print("rbis", rbis, "de type", type(rbis)) # rbis doen't work because of rpyToMatrix()
+        #print("rbis", rbis, "de type", type(rbis)) # rbis doen't work because of rpyToMatrix()
         # TODO change orientation of joint ***
-        joint_placement.rotation = se3.utils.rpyToMatrix(osMpi * r)
-        print("osmpi * r", osMpi * r)
+        joint_placement.rotation = se3.utils.rpyToMatrix(osMpi * r) # is ok without np.dot because r is of type matrix
+        #print("osmpi * r", osMpi * r)
 
         t = pymodel['Joints'][joint][0]['location_in_parent'][0]
         joint_placement.translation = osMpi * np.matrix(t, dtype=np.float64).T
-        print("joint", joint, "is here", joint_placement)
+        #print("joint", joint, "is here", joint_placement)
 
         mass = np.float64(pymodel['Bodies'][body]['mass'][0])
         mass_center = osMpi * np.matrix(pymodel['Bodies'][body]['mass_center'][0], dtype=np.float64).T
-        inertia_matrix = np.matrix(pymodel['Bodies'][body]['inertia'][0], dtype=np.float64)
-        body_inertia = (se3.Inertia(mass, mass_center, inertia_matrix))
+        # CAUTION: changing inertia matrix from coordinate system requires the transformation osMpi*I*(osMpi)^T
+        inertia_matrix = np.matrix(pymodel['Bodies'][body]['inertia'][0], dtype=np.float64) # WHY isn't it transformed using osMpi as well ?!! TEST adding osMpi
+        #print("TEST INERTIA du joint", joint)
+        #print("mass_center avant osmpi", np.matrix(pymodel['Bodies'][body]['mass_center'][0], dtype=np.float64).T)
+        #print("mass_center", mass_center)
+        #print("inertia_matrix",inertia_matrix)
+        osMpiIosMpiT = np.dot(osMpi,np.dot(inertia_matrix,osMpi.T)) # transformation osMpi*I*osMpi^T
+        #print("osMpi*i*osMpi", osMpiIosMpiT)
+        #InertiaReady = se3.Symmetric3
+        #print("osMpi*i*osMpi [0]", np.dot(osMpi,np.dot(inertia_matrix,osMpi.T))[0])
+        #print("osMpi*i*osMpi [0][:]", np.dot(osMpi,np.dot(inertia_matrix,osMpi.T))[0][:])
+        #print("END TEST INERTIA")
+        #body_inertia = (se3.Inertia(mass, mass_center, inertia_matrix))
+        body_inertia = (se3.Inertia(mass, mass_center, osMpiIosMpiT)) # LOOKS CORRECT, TODO FINISH TESTING
         body_placement = se3.SE3.Identity()
 
         # Add to pinocchio model
@@ -232,17 +244,17 @@ def parseModel(filename, mesh_path, verbose=False):
                 print('Filename: ' + filename)
             transform = np.matrix(pymodel['Visuals'][body][1]['transform'][mesh], dtype=np.float64).T
             #print(transform[3:6])
-            transform[3:6] = osMpi * transform[3:6] # issue ehre with matrix sizes
+            transform[3:6] = osMpi * transform[3:6] # issue here with matrix sizes
             #print("transform 3:6", transform[3:6])
             transform[0:3] = osMpi * transform[0:3]
-            print(transform)
+            #print(transform)
             ms_system.createVisuals(parent, joint_name, filename, scale_factors, transform)
 
             # WIP for compatibility with RobotWrapper, filling ms_system.geom_model attribute
             scale_factorsEigen = np.array([1., 1., 1.])
             transformSE3 = se3.SE3.Identity()
             transformSE3.rotation = np.dot(se3.utils.rpyToMatrix(transform[0:3]), osMpi) # according to line 131 of viewer_utils.py
-            print("transformSE3 is", transformSE3)
+            #print("transformSE3 is", transformSE3)
             #transformSE3.translation = transform[3:6] # test , solves translation of fingers and skull, rotation still faulty
             #print("fourni", transformSE3.translation)
             parent_joint = joint + 1 # the first bones are attached to the free-flyer (ground_pelvis joint), not the universe
